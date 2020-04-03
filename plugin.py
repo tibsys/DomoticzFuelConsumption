@@ -4,7 +4,7 @@
 # Developer: Tristan Israël - Alefbet
 #
 """
-<plugin key="FuelConsumption" name="Fuel Consumption" author="alefbet" version="1.0.2" wikilink="" externallink="https://alefbet.net/">
+<plugin key="FuelConsumption" name="Fuel Consumption" author="alefbet" version="1.0.3" wikilink="" externallink="https://alefbet.net/">
     <description>
         <h2>Noise Alarm</h2><br/>
         <h3>Features</h3>
@@ -40,7 +40,7 @@ from datetime import datetime
 import Domoticz
 
 class BasePlugin:    
-    ignitionStart = 0     
+    lastUpdate = 0     
     isOn = False # Flame is On?    
     isReady = False
     jsonData = {}
@@ -166,9 +166,12 @@ class BasePlugin:
         if not self.isOn:
             return        
 
-        # Update counters
-        duration_secs = round(datetime.timestamp(datetime.now()) - datetime.timestamp(self.ignitionStart))
-        Domoticz.Debug("Flame has been On during " +str(duration_secs) +" seconds")                   
+        # Duration since last update
+        duration_secs = round(datetime.timestamp(datetime.now()) - datetime.timestamp(self.lastUpdate))
+        if duration_secs == 0:
+            return
+            
+        Domoticz.Debug("Flame has been On during " +str(duration_secs) +" seconds since last update")            
 
         # Calculate cumulated consumption
         lastValue = self.jsonData["total"]
@@ -198,7 +201,7 @@ class BasePlugin:
         Devices[4].Update(nValue=0, sValue=str(self.jsonData["today"]))                         
 
         # Update db
-        self.updateDb()
+        self.updateDb()        
 
     def onStop(self):
         Domoticz.Debug("onStop called")                     
@@ -208,22 +211,22 @@ class BasePlugin:
         Domoticz.Debug("onConnect called")
         
     def onMessage(self, Data, Status, Extra):
-        Domoticz.Debug("onMessage called")
+        Domoticz.Debug("onMessage called: Data=" +str(Data))
 
     def consumptionInLiters(self, duration_in_secs):
         s_in_hour = 1/3600
         flow_per_hour = float(Parameters["Mode1"]) #L/h
-        flow_per_second =flow_per_hour*s_in_hour
+        flow_per_second = flow_per_hour*s_in_hour
         consumption = duration_in_secs*flow_per_second
         return round(consumption, 3)
 
     def onCommand(self, Unit, Command, Level, Hue):
-        Domoticz.Debug("onCommand called: ")
+        Domoticz.Debug("onCommand called: Unit=" +str(Unit))
         if Unit == 1:
             if Command == "On":
                 Devices[1].Update(nValue=1, sValue="On")
                 Domoticz.Debug("Flame is On")
-                self.ignitionStart = datetime.now()  
+                self.lastUpdate = datetime.now()  
                 self.isOn = True              
             if Command == "Off":
                 Devices[1].Update(nValue=0, sValue="Off")                
@@ -244,7 +247,7 @@ class BasePlugin:
         # Calculate current consumption (since On)        
         if self.isOn:
             duration_secs = round(datetime.timestamp(datetime.now()) - datetime.timestamp(self.ignitionStart))
-            Domoticz.Debug("Flame has been On during " +str(duration_secs) +" seconds") 
+            Domoticz.Debug("Heartbeat: Flame has been On during " +str(duration_secs) +" seconds") 
             consumption = self.consumptionInLiters(duration_secs)
             Devices[2].Update(nValue=0, sValue=str(consumption))
         else:            
