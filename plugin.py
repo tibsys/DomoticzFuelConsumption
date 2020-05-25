@@ -4,7 +4,7 @@
 # Developer: Tristan Israël - Alefbet
 #
 """
-<plugin key="FuelConsumption" name="Fuel Consumption" author="alefbet" version="1.0.3" wikilink="" externallink="https://alefbet.net/">
+<plugin key="FuelConsumption" name="Fuel Consumption" author="alefbet" version="1.0.4" wikilink="" externallink="https://alefbet.net/">
     <description>
         <h2>Noise Alarm</h2><br/>
         <h3>Features</h3>
@@ -107,6 +107,7 @@ class BasePlugin:
         try:
             with open(self.dbFilepath(), 'w') as f:        
                 json.dump(self.jsonData, f)
+                self.lastUpdate = datetime.now()
                 return True
         except:              
             return False                
@@ -246,8 +247,8 @@ class BasePlugin:
         
         # Calculate current consumption (since On)        
         if self.isOn:
-            duration_secs = round(datetime.timestamp(datetime.now()) - datetime.timestamp(self.ignitionStart))
-            Domoticz.Debug("Heartbeat: Flame has been On during " +str(duration_secs) +" seconds") 
+            duration_secs = round(datetime.timestamp(datetime.now()) - datetime.timestamp(self.lastUpdate))
+            Domoticz.Debug("Heartbeat: Flame has been On during " +str(duration_secs) +" seconds since last update") 
             consumption = self.consumptionInLiters(duration_secs)
             Devices[2].Update(nValue=0, sValue=str(consumption))
         else:            
